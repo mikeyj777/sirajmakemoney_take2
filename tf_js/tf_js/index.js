@@ -27,6 +27,7 @@ async function app() {
   document.getElementById('class-a').addEventListener('click', () => addExample(0));
   document.getElementById('class-b').addEventListener('click', () => addExample(1));
   document.getElementById('class-c').addEventListener('click', () => addExample(2));
+  document.getElementById('no-action').addEventListener('click', () => addExample(3));
 
   while (true) {
     if (classifier.getNumClasses() > 0) {
@@ -34,18 +35,20 @@ async function app() {
       const activation = net.infer(webcamElement, 'conv_preds');
       // Get the most likely class and confidences from the classifier module.
       const result = await classifier.predictClass(activation);
-
-      const classes = ['A', 'B', 'C'];
+      
+      const classNoAction = 'No Action';
+      
+      const classes = ['A', 'B', 'C', 'No Action'];
+      
       document.getElementById('console').innerText = `
         prediction: ${classes[result.classIndex]}\n
-        probability: ${result.confidences[result.classIndex]}
-      `;
+        probability: ${result.confidences[result.classIndex]}`;
+      
     }
 
     await tf.nextFrame();
   }
 }
-
 async function setupWebcam() {
 	  return new Promise((resolve, reject) => {
 	    const navigatorAny = navigator;
