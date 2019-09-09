@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn import linear_model
+from sklearn.linear_model import OrthogonalMatchingPursuit
 from pandas import Series, DataFrame
 import matplotlib.pyplot as plt
 from matplotlib import style
@@ -8,6 +9,7 @@ import matplotlib as mpl
 from sklearn.metrics import mean_squared_error, r2_score
 
 avetime = 30
+test_fract = 0.2
 
 
 def moving_average(a, n=100):
@@ -30,58 +32,63 @@ mavg = moving_average(np.asarray(close_px), avetime)
 mavg = mavg[~np.isnan(mavg)]
 mavg = mavg.reshape(-1, 1)
 
+N = mavg.shape[0]
+train_data_sz = int(N * (1 - test_fract))
+
+
 mavg_date = moving_average(np.asarray(thedate), avetime)
 mavg_date = mavg_date.reshape(-1, 1)
-mavg_date_train = mavg_date[:-20]
-mavg_date_test = mavg_date[-20:]
+mavg_date_train = mavg_date[:-train_data_sz]
+mavg_date_test = mavg_date[-train_data_sz:]
 
-# Split the data into training/testing sets
-daterange_train = thedate[:-20]
-daterange_test = thedate[-20:]
-
-# Split the targets into training/testing sets
-close_px_train = close_px[:-20]
-close_px_test = close_px[-20:]
-
-mavg_train = mavg[:-20]
-mavg_test = mavg[-20:]
+mavg_train = mavg[:-train_data_sz]
+mavg_test = mavg[-train_data_sz:]
 
 
 # Create linear regression object
-regr = linear_model.LinearRegression()
 regrmavg = linear_model.LinearRegression()
+regomp = OrthogonalMatchingPursuit()
+regsgd = linear_model.SGDRegressor(max_iter=1000, tol=1e-3)
 # Train the model using the training sets
-regr.fit(daterange_train, close_px_train)
+
+regomp.fit(mavg_date_train, mavg_train)
+
 regrmavg.fit(mavg_date_train, mavg_train)
+regsgd.fit(mavg_date_train, mavg_train)
 
 # Make predictions using the testing set
-close_px_pred = regr.predict(daterange_test)
 mavg_pred = regrmavg.predict(mavg_date_test)
 
+omp_pred = regomp.predict(mavg_date_test)
+
+sgd_pred = regsgd.predict(mavg_date_test)
+
 # The coefficients
-print('Coefficients: \n', regr.coef_)
 print('Coefficients: \n', regrmavg.coef_)
+print('Coefficients: \n', regomp.coef_)
+
 # The mean squared error
-print("Mean squared error: %.2f"
-      % mean_squared_error(close_px_test, close_px_pred))
+
 print("Mov Avg mean squared error: %.2f"
       % mean_squared_error(mavg_test, mavg_pred))
 # Explained variance score: 1 is perfect prediction
-print('Variance score: %.2f' % r2_score(close_px_test, close_px_pred))
 print('move avg Variance score: %.2f' % r2_score(mavg_test, mavg_pred))
-# Plot outputs
-# plt.scatter(daterange_test, close_px_test,  color='black')
-# plt.plot(daterange_test, close_px_pred, color='blue', linewidth=3)
-#
-# plt.xticks(())
-# plt.yticks(())
-#
-# plt.show()
+
+print("omp Mov Avg mean squared error: %.2f"
+      % mean_squared_error(mavg_test, omp_pred))
+# Explained variance score: 1 is perfect prediction
+print('omp move avg Variance score: %.2f' % r2_score(mavg_test, omp_pred))
+
+print("sgd Mov Avg mean squared error: %.2f"
+      % mean_squared_error(mavg_test, sgd_pred))
+# Explained variance score: 1 is perfect prediction
+print('sgd move avg Variance score: %.2f' % r2_score(mavg_test, sgd_pred))
+
 
 plt.scatter(mavg_date_test, mavg_test,  color='red')
-plt.plot(mavg_date_test, mavg_pred, color='orange', linewidth=3)
+plt.plot(mavg_date_test, sgd_pred, color='orange', linewidth=3)
 
-plt.xticks(())
-plt.yticks(())
+# plt.xticks(())
+# plt.yticks(())
 
 plt.show()
